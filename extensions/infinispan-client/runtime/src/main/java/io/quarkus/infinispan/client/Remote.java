@@ -12,12 +12,14 @@ import java.lang.annotation.Target;
 
 import jakarta.enterprise.util.AnnotationLiteral;
 import jakarta.inject.Qualifier;
+import jakarta.interceptor.InterceptorBinding;
 
 /**
  * Qualifier used to specify which remote cache will be injected.
  *
  * @author William Burns
  */
+@InterceptorBinding
 @Target({ METHOD, FIELD, PARAMETER, TYPE })
 @Retention(RUNTIME)
 @Documented
@@ -26,6 +28,7 @@ public @interface Remote {
     /**
      * The remote cache name. If no value is provided the default cache is assumed.
      */
+    //    @Nonbinding
     String value() default "";
 
     class Literal extends AnnotationLiteral<Remote> implements Remote {

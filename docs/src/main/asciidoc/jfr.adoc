@@ -267,6 +267,46 @@ Extension::
 
   Records information about extensions included in the running Quarkus. This event includes the name of the extensions installed in Quarkus.
 
+
+=== Infinispan API Event
+This event is recorded when the `infinispan-client` extension is enabled.
+There are six types of JFR events, which are recorded when executing methods of Infinispan's RemoteCache.
+These events allow you to monitor remote cache access performance in detail within your application.
+
+RemoteCache::
+This event records the entire processing duration of a single remote cache operation. It is enabled by default and tracks the period until the operation completes.
+
+RemoteCacheStart::
+Records the start point of a remote cache operation. Disabled by default.
+
+RemoteCacheEnd::
+Records the completion point of a remote cache operation. Disabled by default.
+
+RemoteCacheAll::
+This event records the entire processing duration of batch remote cache operations(which process multiple keys or key-value pairs). This includes bulk operations such as putAll, getAll, etc.
+
+RemoteCacheAllStart::
+Records the start point of a batch remote cache operation. Disabled by default.
+
+RemoteCacheAllEnd::
+Records the completion point of a batch remote cache operation. Disabled by default.
+
+All remote cache events record the following information:
+
+- Method Name
+- Cache Name
+- Cluster Name
+
+In addition, RemoteCacheAll, RemoteCacheAllStart, and RemoteCacheAllEnd events also record Element Count.
+
+**Method Name** is the executed method (get, put, remove, etc).
+
+**Cache Name** is the name of the remote cache.
+
+**Cluster Name** is the name of the cluster containing the remote cache.
+
+**Element Count** is the number of keys or key-value pairs specified in the method executed in bulk.
+
 === Native Image
 
 Native executables supports Java Flight Recorder.

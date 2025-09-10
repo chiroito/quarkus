@@ -14,6 +14,8 @@ import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.counter.api.CounterManager;
 
 import io.quarkus.arc.Arc;
+import io.quarkus.arc.InterceptionProxy;
+import io.quarkus.arc.SyntheticCreationalContext;
 import io.quarkus.arc.runtime.BeanContainerListener;
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.annotations.Recorder;
@@ -47,13 +49,15 @@ public class InfinispanRecorder {
         });
     }
 
-    public <K, V> Supplier<RemoteCache<K, V>> infinispanRemoteCacheClientSupplier(String clientName, String cacheName) {
-        return new InfinispanClientSupplier<>(new Function<InfinispanClientProducer, RemoteCache<K, V>>() {
-            @Override
-            public RemoteCache<K, V> apply(InfinispanClientProducer infinispanClientProducer) {
-                return infinispanClientProducer.getRemoteCache(clientName, cacheName);
-            }
-        });
+    public <K, V> Function<SyntheticCreationalContext<RemoteCache<K, V>>, RemoteCache<K, V>> infinispanRemoteCacheClientFunction(
+            String clientName, String cacheName) {
+        return ctx -> {
+            InfinispanClientProducer infinispanClientProducer = Arc.container().instance(InfinispanClientProducer.class).get();
+            InterceptionProxy<RemoteCache<K, V>> proxy = ctx.getInterceptionProxy();
+            RemoteCache<K, V> delegate = infinispanClientProducer.getRemoteCache(clientName, cacheName);
+
+            return proxy.create(delegate);
+        };
     }
 
     public RuntimeValue<RemoteCacheManager> getClient(String name) {

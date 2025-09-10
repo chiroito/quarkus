@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -57,6 +58,7 @@ import org.jboss.jandex.DotName;
 import org.jboss.jandex.IndexView;
 import org.jboss.jandex.Type;
 
+import io.quarkus.arc.SyntheticCreationalContext;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.arc.deployment.BeanContainerListenerBuildItem;
@@ -582,7 +584,7 @@ class InfinispanClientProcessor {
         for (RemoteCacheBean remoteCacheBean : remoteCacheBeans) {
             syntheticBeanBuildItemBuildProducer.produce(
                     configureAndCreateSyntheticBean(remoteCacheBean,
-                            recorder.infinispanRemoteCacheClientSupplier(remoteCacheBean.clientName,
+                            recorder.infinispanRemoteCacheClientFunction(remoteCacheBean.clientName,
                                     remoteCacheBean.cacheName)));
         }
     }
@@ -608,11 +610,13 @@ class InfinispanClientProcessor {
         return configurator.done();
     }
 
-    static <T> SyntheticBeanBuildItem configureAndCreateSyntheticBean(RemoteCacheBean remoteCacheBean, Supplier<T> supplier) {
+    static <K, V> SyntheticBeanBuildItem configureAndCreateSyntheticBean(RemoteCacheBean remoteCacheBean,
+            Function<SyntheticCreationalContext<RemoteCache<K, V>>, RemoteCache<K, V>> func) {
         SyntheticBeanBuildItem.ExtendedBeanConfigurator configurator = SyntheticBeanBuildItem.configure(RemoteCache.class)
                 .types(remoteCacheBean.type)
                 .scope(ApplicationScoped.class)
-                .supplier(supplier)
+                .injectInterceptionProxy(RemoteCacheBindingSource.class)
+                .createWith(func)
                 .unremovable()
                 .setRuntimeInit();
 
