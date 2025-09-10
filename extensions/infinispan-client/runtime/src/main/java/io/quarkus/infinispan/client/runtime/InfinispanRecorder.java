@@ -49,14 +49,27 @@ public class InfinispanRecorder {
         });
     }
 
+    public <K, V> Supplier<RemoteCache<K, V>> infinispanRemoteCacheClientSupplier(String clientName, String cacheName) {
+        return new InfinispanClientSupplier<>(new Function<InfinispanClientProducer, RemoteCache<K, V>>() {
+            @Override
+            public RemoteCache<K, V> apply(InfinispanClientProducer infinispanClientProducer) {
+                return infinispanClientProducer.getRemoteCache(clientName, cacheName);
+            }
+        });
+    }
+
     public <K, V> Function<SyntheticCreationalContext<RemoteCache<K, V>>, RemoteCache<K, V>> infinispanRemoteCacheClientFunction(
             String clientName, String cacheName) {
-        return ctx -> {
-            InfinispanClientProducer infinispanClientProducer = Arc.container().instance(InfinispanClientProducer.class).get();
-            InterceptionProxy<RemoteCache<K, V>> proxy = ctx.getInterceptionProxy();
-            RemoteCache<K, V> delegate = infinispanClientProducer.getRemoteCache(clientName, cacheName);
+        return new Function<SyntheticCreationalContext<RemoteCache<K, V>>, RemoteCache<K, V>>() {
+            @Override
+            public RemoteCache<K, V> apply(SyntheticCreationalContext<RemoteCache<K, V>> ctx) {
+                InfinispanClientProducer infinispanClientProducer = Arc.container().instance(InfinispanClientProducer.class)
+                        .get();
+                InterceptionProxy<RemoteCache<K, V>> proxy = ctx.getInterceptionProxy();
+                RemoteCache<K, V> remoteCache = infinispanClientProducer.getRemoteCache(clientName, cacheName);
 
-            return proxy.create(delegate);
+                return proxy.create(remoteCache);
+            }
         };
     }
 

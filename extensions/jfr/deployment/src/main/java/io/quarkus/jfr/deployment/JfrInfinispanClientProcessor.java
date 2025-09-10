@@ -1,26 +1,35 @@
 package io.quarkus.jfr.deployment;
 
-import java.util.function.BooleanSupplier;
+import java.util.List;
+
+import org.infinispan.client.hotrod.logging.Log;
+import org.infinispan.client.hotrod.logging.LogFactory;
 
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
-import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
-import io.quarkus.bootstrap.classloading.QuarkusClassLoader;
+import io.quarkus.deployment.Feature;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
+import io.quarkus.deployment.builditem.FeatureBuildItem;
+import io.quarkus.deployment.builditem.nativeimage.NativeImageProxyDefinitionBuildItem;
 import io.quarkus.jfr.runtime.infinispan.JfrRemoteCacheInterceptor;
 
 public class JfrInfinispanClientProcessor {
 
-    @BuildStep(onlyIf = IsInfinispanClientPresent.class)
-    void add(BuildProducer<AdditionalBeanBuildItem> additionalBeans, BuildProducer<UnremovableBeanBuildItem> unremovableBeans) {
-        additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(JfrRemoteCacheInterceptor.class));
-    }
+    private static final Log LOG = LogFactory.getLog(JfrInfinispanClientProcessor.class);
 
-    static class IsInfinispanClientPresent implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return (QuarkusClassLoader.isClassPresentAtRuntime("org.infinispan.client.hotrod.RemoteCache")
-                    && QuarkusClassLoader.isClassPresentAtRuntime("io.quarkus.infinispan.client.Remote"));
+    @BuildStep
+    void addInterceptorForInfinispan(List<FeatureBuildItem> features,
+            BuildProducer<AdditionalBeanBuildItem> additionalBeans,
+            BuildProducer<NativeImageProxyDefinitionBuildItem> nativeImageProxyDefinition) {
+
+        if (features.stream().anyMatch(f -> f.getName().equals(Feature.INFINISPAN_CLIENT.getName()))) {
+            LOG.info("Adding JFR support for Infinispan Client");
+            additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(JfrRemoteCacheInterceptor.class));
+            nativeImageProxyDefinition.produce(new NativeImageProxyDefinitionBuildItem(
+                    "java.util.Map",
+                    "java.util.concurrent.ConcurrentMap",
+                    "java.util.concurrent.ConcurrentHashMap",
+                    "org.infinispan.client.hotrod.RemoteCache"));
         }
     }
 }

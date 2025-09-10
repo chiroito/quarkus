@@ -539,7 +539,8 @@ class InfinispanClientProcessor {
             BeanDiscoveryFinishedBuildItem finishedBuildItem,
             List<InfinispanClientNameBuildItem> infinispanClientNames,
             BeanDiscoveryFinishedBuildItem beans,
-            BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer) {
+            BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer,
+            List<FeatureBuildItem> features) {
 
         Set<String> clientNames = infinispanClientNames.stream().map(icn -> icn.getName()).collect(Collectors.toSet());
 
@@ -583,6 +584,8 @@ class InfinispanClientProcessor {
         for (RemoteCacheBean remoteCacheBean : remoteCacheBeans) {
             syntheticBeanBuildItemBuildProducer.produce(
                     configureAndCreateSyntheticBean(remoteCacheBean,
+                            features,
+                            recorder.infinispanRemoteCacheClientSupplier(remoteCacheBean.clientName, remoteCacheBean.cacheName),
                             recorder.infinispanRemoteCacheClientFunction(remoteCacheBean.clientName,
                                     remoteCacheBean.cacheName)));
         }
@@ -610,14 +613,22 @@ class InfinispanClientProcessor {
     }
 
     static <K, V> SyntheticBeanBuildItem configureAndCreateSyntheticBean(RemoteCacheBean remoteCacheBean,
-            Function<SyntheticCreationalContext<RemoteCache<K, V>>, RemoteCache<K, V>> func) {
+            List<FeatureBuildItem> features,
+            Supplier<RemoteCache<K, V>> supplier,
+            Function<SyntheticCreationalContext<RemoteCache<K, V>>, RemoteCache<K, V>> function) {
         SyntheticBeanBuildItem.ExtendedBeanConfigurator configurator = SyntheticBeanBuildItem.configure(RemoteCache.class)
                 .types(remoteCacheBean.type)
                 .scope(ApplicationScoped.class)
-                .injectInterceptionProxy(RemoteCacheBindingSource.class)
-                .createWith(func)
+                .supplier(supplier)
                 .unremovable()
                 .setRuntimeInit();
+
+        if (features.stream().anyMatch(f -> f.getName().equals(Feature.JFR.getName()))) {
+            configurator.createWith(function).injectInterceptionProxy(RemoteCacheBindingSource.class);
+            log.info("Enable RemoteCache Interceptor");
+        } else {
+            configurator.supplier(supplier);
+        }
 
         configurator.addQualifier().annotation(INFINISPAN_REMOTE_ANNOTATION).addValue("value", remoteCacheBean.cacheName)
                 .done();
