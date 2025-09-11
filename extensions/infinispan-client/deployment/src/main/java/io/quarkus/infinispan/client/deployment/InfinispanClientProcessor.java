@@ -84,8 +84,6 @@ import io.quarkus.deployment.builditem.ExtensionSslNativeSupportBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.HotDeploymentWatchedFileBuildItem;
 import io.quarkus.deployment.builditem.NativeImageFeatureBuildItem;
-import io.quarkus.deployment.builditem.SystemPropertyBuildItem;
-import io.quarkus.deployment.builditem.nativeimage.NativeImageConfigBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageSecurityProviderBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
@@ -137,6 +135,11 @@ class InfinispanClientProcessor {
         return new NativeImageFeatureBuildItem(DisableLoggingFeature.class);
     }
 
+    @BuildStep
+    FeatureBuildItem feature() {
+        return new FeatureBuildItem(Feature.INFINISPAN_CLIENT);
+    }
+
     /**
      * Sets up additional properties for use when proto stream marshaller is in use
      */
@@ -173,18 +176,14 @@ class InfinispanClientProcessor {
     InfinispanPropertiesBuildItem setup(ApplicationArchivesBuildItem applicationArchivesBuildItem,
             BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
             BuildProducer<HotDeploymentWatchedFileBuildItem> hotDeployment,
-            BuildProducer<SystemPropertyBuildItem> systemProperties,
-            BuildProducer<FeatureBuildItem> feature,
             BuildProducer<AdditionalBeanBuildItem> additionalBeans,
             BuildProducer<ExtensionSslNativeSupportBuildItem> sslNativeSupport,
             BuildProducer<NativeImageSecurityProviderBuildItem> nativeImageSecurityProviders,
-            BuildProducer<NativeImageConfigBuildItem> nativeImageConfig,
             BuildProducer<InfinispanClientNameBuildItem> infinispanClientNames,
             MarshallingBuildItem marshallingBuildItem,
             BuildProducer<NativeImageResourceBuildItem> resourceBuildItem,
             CombinedIndexBuildItem applicationIndexBuildItem) throws ClassNotFoundException, IOException {
 
-        feature.produce(new FeatureBuildItem(Feature.INFINISPAN_CLIENT));
         additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(InfinispanClientProducer.class));
         additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(CacheInvalidateAllInterceptor.class));
         additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(CacheResultInterceptor.class));
@@ -252,10 +251,10 @@ class InfinispanClientProcessor {
                     }
                 }
                 properties.putAll(marshallingBuildItem.getProperties());
-                Collection<ClassInfo> initializerClasses = index.getAllKnownImplementors(DotName.createSimple(
+                Collection<ClassInfo> initializerClasses = index.getAllKnownImplementations(DotName.createSimple(
                         SerializationContextInitializer.class.getName()));
                 initializerClasses
-                        .addAll(index.getAllKnownImplementors(DotName.createSimple(GeneratedSchema.class.getName())));
+                        .addAll(index.getAllKnownImplementations(DotName.createSimple(GeneratedSchema.class.getName())));
 
                 Set<SerializationContextInitializer> initializers = new HashSet<>(initializerClasses.size());
                 for (ClassInfo ci : initializerClasses) {
@@ -371,7 +370,7 @@ class InfinispanClientProcessor {
      * @return string containing the contents of the file
      */
     private static String getContents(InputStream stream) {
-        try (Scanner scanner = new Scanner(stream, "UTF-8")) {
+        try (Scanner scanner = new Scanner(stream, StandardCharsets.UTF_8)) {
             return scanner.useDelimiter("\\A").next();
         }
     }
@@ -488,7 +487,7 @@ class InfinispanClientProcessor {
         }
     }
 
-    class RemoteCacheBean {
+    static class RemoteCacheBean {
         Type type;
         String clientName;
         String cacheName;
