@@ -9,6 +9,12 @@ import io.quarkus.jfr.runtime.config.JfrRuntimeConfig;
 import io.quarkus.jfr.runtime.http.rest.RestEndEvent;
 import io.quarkus.jfr.runtime.http.rest.RestPeriodEvent;
 import io.quarkus.jfr.runtime.http.rest.RestStartEvent;
+import io.quarkus.jfr.runtime.infinispan.event.RemoteCacheAllEndEvent;
+import io.quarkus.jfr.runtime.infinispan.event.RemoteCacheAllPeriodEvent;
+import io.quarkus.jfr.runtime.infinispan.event.RemoteCacheAllStartEvent;
+import io.quarkus.jfr.runtime.infinispan.event.RemoteCacheEndEvent;
+import io.quarkus.jfr.runtime.infinispan.event.RemoteCachePeriodEvent;
+import io.quarkus.jfr.runtime.infinispan.event.RemoteCacheStartEvent;
 import io.quarkus.jfr.runtime.runtime.QuarkusRuntimeInfo;
 import io.quarkus.runtime.ImageMode;
 import io.quarkus.runtime.RuntimeValue;
@@ -36,6 +42,10 @@ public class JfrRecorder {
                 logger.info("quarkus-jfr for REST server is disabled at runtime");
                 this.disabledRestJfr();
             }
+            if (!runtimeConfig.getValue().infinispanEnabled()) {
+                logger.info("quarkus-jfr for Infinispan is disabled at runtime");
+                this.disableInfinispanJfr();
+            }
         }
     }
 
@@ -45,8 +55,18 @@ public class JfrRecorder {
         FlightRecorder.unregister(RestPeriodEvent.class);
     }
 
+    public void disableInfinispanJfr() {
+        FlightRecorder.unregister(RemoteCacheStartEvent.class);
+        FlightRecorder.unregister(RemoteCacheEndEvent.class);
+        FlightRecorder.unregister(RemoteCachePeriodEvent.class);
+        FlightRecorder.unregister(RemoteCacheAllStartEvent.class);
+        FlightRecorder.unregister(RemoteCacheAllEndEvent.class);
+        FlightRecorder.unregister(RemoteCacheAllPeriodEvent.class);
+    }
+
     public void disabledQuarkusJfr() {
         this.disabledRestJfr();
+        this.disableInfinispanJfr();
     }
 
     public Supplier<QuarkusRuntimeInfo> quarkusInfoSupplier(String version, List<String> features) {

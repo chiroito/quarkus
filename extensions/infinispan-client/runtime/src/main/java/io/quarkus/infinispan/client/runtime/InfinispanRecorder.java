@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import jakarta.enterprise.inject.Default;
 import jakarta.enterprise.inject.literal.NamedLiteral;
@@ -14,6 +15,8 @@ import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.counter.api.CounterManager;
 
 import io.quarkus.arc.Arc;
+import io.quarkus.arc.InterceptionProxy;
+import io.quarkus.arc.SyntheticCreationalContext;
 import io.quarkus.arc.runtime.BeanContainerListener;
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.annotations.Recorder;
@@ -47,13 +50,23 @@ public class InfinispanRecorder {
         });
     }
 
-    public <K, V> Supplier<RemoteCache<K, V>> infinispanRemoteCacheClientSupplier(String clientName, String cacheName) {
-        return new InfinispanClientSupplier<>(new Function<InfinispanClientProducer, RemoteCache<K, V>>() {
+    public Function<SyntheticCreationalContext<RemoteCache<?, ?>>, RemoteCache<?, ?>> infinispanRemoteCacheClientFunction2(
+            String clientName, String cacheName, RuntimeValue<UnaryOperator<RemoteCache<?, ?>>> wrapper) {
+        return new Function<SyntheticCreationalContext<RemoteCache<?, ?>>, RemoteCache<?, ?>>() {
             @Override
-            public RemoteCache<K, V> apply(InfinispanClientProducer infinispanClientProducer) {
-                return infinispanClientProducer.getRemoteCache(clientName, cacheName);
+            public RemoteCache<?, ?> apply(SyntheticCreationalContext<RemoteCache<?, ?>> ctx) {
+                InfinispanClientProducer infinispanClientProducer = Arc.container().instance(InfinispanClientProducer.class)
+                        .get();
+                RemoteCache<?, ?> remoteCache = infinispanClientProducer.getRemoteCache(clientName, cacheName);
+
+                if (wrapper == null) {
+                    return remoteCache;
+                } else {
+                    InterceptionProxy<RemoteCache<?, ?>> proxy = ctx.getInterceptionProxy();
+                    return proxy.create(wrapper.getValue().apply(remoteCache));
+                }
             }
-        });
+        };
     }
 
     public RuntimeValue<RemoteCacheManager> getClient(String name) {

@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -49,14 +50,9 @@ import org.infinispan.protostream.MessageMarshaller;
 import org.infinispan.protostream.SerializationContextInitializer;
 import org.infinispan.protostream.WrappedMessage;
 import org.infinispan.protostream.schema.Schema;
-import org.jboss.jandex.AnnotationInstance;
-import org.jboss.jandex.AnnotationTarget;
-import org.jboss.jandex.AnnotationValue;
-import org.jboss.jandex.ClassInfo;
-import org.jboss.jandex.DotName;
-import org.jboss.jandex.IndexView;
-import org.jboss.jandex.Type;
+import org.jboss.jandex.*;
 
+import io.quarkus.arc.SyntheticCreationalContext;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.arc.deployment.BeanContainerListenerBuildItem;
@@ -82,19 +78,11 @@ import io.quarkus.deployment.builditem.ExtensionSslNativeSupportBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.HotDeploymentWatchedFileBuildItem;
 import io.quarkus.deployment.builditem.NativeImageFeatureBuildItem;
-import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceBuildItem;
-import io.quarkus.deployment.builditem.nativeimage.NativeImageSecurityProviderBuildItem;
-import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
-import io.quarkus.deployment.builditem.nativeimage.ServiceProviderBuildItem;
+import io.quarkus.deployment.builditem.nativeimage.*;
 import io.quarkus.deployment.pkg.steps.NativeOrNativeSourcesBuild;
 import io.quarkus.infinispan.client.InfinispanClientName;
 import io.quarkus.infinispan.client.Remote;
-import io.quarkus.infinispan.client.runtime.InfinispanClientBuildTimeConfig;
-import io.quarkus.infinispan.client.runtime.InfinispanClientProducer;
-import io.quarkus.infinispan.client.runtime.InfinispanClientUtil;
-import io.quarkus.infinispan.client.runtime.InfinispanClientsBuildTimeConfig;
-import io.quarkus.infinispan.client.runtime.InfinispanRecorder;
-import io.quarkus.infinispan.client.runtime.InfinispanServiceBindingConverter;
+import io.quarkus.infinispan.client.runtime.*;
 import io.quarkus.infinispan.client.runtime.cache.CacheInvalidateAllInterceptor;
 import io.quarkus.infinispan.client.runtime.cache.CacheInvalidateInterceptor;
 import io.quarkus.infinispan.client.runtime.cache.CacheResultInterceptor;
@@ -170,6 +158,30 @@ class InfinispanClientProcessor {
         }
     }
 
+    //    @BuildStep()
+    //    NativeImageProxyDefinitionBuildItem addNativeImageProxyDefinition() {
+    //        return new NativeImageProxyDefinitionBuildItem("java.util.Map",
+    //                "java.util.concurrent.ConcurrentMap",
+    //                "org.infinispan.client.hotrod.RemoteCache");
+    //    }
+
+    //    @BuildStep
+    //    void setUpInterceptor(BuildProducer<ReflectiveClassBuildItem> reflectiveClass) {
+    //        reflectiveClass.produce(
+    //                ReflectiveClassBuildItem.builder(
+    //                        "java.util.Map")
+    //                        .build());
+    //        reflectiveClass.produce(
+    //                ReflectiveClassBuildItem.builder(
+    //                        "java.util.concurrent.ConcurrentMap")
+    //                        .build());
+    //        reflectiveClass.produce(
+    //                ReflectiveClassBuildItem.builder(
+    //                        "org.infinispan.client.hotrod.RemoteCache")
+    //                        .build());
+    //
+    //    }
+
     @BuildStep
     InfinispanPropertiesBuildItem setup(ApplicationArchivesBuildItem applicationArchivesBuildItem,
             BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
@@ -180,7 +192,8 @@ class InfinispanClientProcessor {
             BuildProducer<InfinispanClientNameBuildItem> infinispanClientNames,
             MarshallingBuildItem marshallingBuildItem,
             BuildProducer<NativeImageResourceBuildItem> resourceBuildItem,
-            CombinedIndexBuildItem applicationIndexBuildItem) throws ClassNotFoundException, IOException {
+            CombinedIndexBuildItem applicationIndexBuildItem)
+            throws ClassNotFoundException, IOException {
 
         additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(InfinispanClientProducer.class));
         additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(CacheInvalidateAllInterceptor.class));
@@ -537,7 +550,8 @@ class InfinispanClientProcessor {
             BeanDiscoveryFinishedBuildItem finishedBuildItem,
             List<InfinispanClientNameBuildItem> infinispanClientNames,
             BeanDiscoveryFinishedBuildItem beans,
-            BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer) {
+            BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer,
+            Optional<RemoteCacheInterceptorBuildItem> interceptorBuildItem) {
 
         Set<String> clientNames = infinispanClientNames.stream().map(icn -> icn.getName()).collect(Collectors.toSet());
 
@@ -547,8 +561,11 @@ class InfinispanClientProcessor {
                     AnnotationInstance remoteCacheQualifier = ip.getRequiredQualifier(INFINISPAN_REMOTE_ANNOTATION);
                     AnnotationInstance clientNameQualifier = ip.getRequiredQualifier(INFINISPAN_CLIENT_ANNOTATION);
 
+                    //                    ParameterizedType.Builder builder = ParameterizedType.builder(RemoteCache.class);
+                    //                    ip.getType().asParameterizedType().arguments().stream().forEach(t -> builder.addArgument(t));
+
                     RemoteCacheBean remoteCacheBean = new RemoteCacheBean();
-                    remoteCacheBean.type = ip.getType();
+                    remoteCacheBean.type = ip.getType().asParameterizedType();
                     remoteCacheBean.cacheName = remoteCacheQualifier.value().asString();
                     remoteCacheBean.clientName = clientNameQualifier == null ? DEFAULT_INFINISPAN_CLIENT_NAME
                             : clientNameQualifier.value().asString();
@@ -579,10 +596,12 @@ class InfinispanClientProcessor {
 
         // Produce RemoteCache beans
         for (RemoteCacheBean remoteCacheBean : remoteCacheBeans) {
+            Function<SyntheticCreationalContext<RemoteCache<?, ?>>, RemoteCache<?, ?>> func = recorder
+                    .infinispanRemoteCacheClientFunction2(
+                            remoteCacheBean.clientName, remoteCacheBean.cacheName,
+                            interceptorBuildItem.isEmpty() ? null : interceptorBuildItem.get().getWrapperFactory());
             syntheticBeanBuildItemBuildProducer.produce(
-                    configureAndCreateSyntheticBean(remoteCacheBean,
-                            recorder.infinispanRemoteCacheClientSupplier(remoteCacheBean.clientName,
-                                    remoteCacheBean.cacheName)));
+                    configureAndCreateSyntheticBean(remoteCacheBean, func, interceptorBuildItem));
         }
     }
 
@@ -607,13 +626,25 @@ class InfinispanClientProcessor {
         return configurator.done();
     }
 
-    static <T> SyntheticBeanBuildItem configureAndCreateSyntheticBean(RemoteCacheBean remoteCacheBean, Supplier<T> supplier) {
+    static <K, V> SyntheticBeanBuildItem configureAndCreateSyntheticBean(RemoteCacheBean remoteCacheBean,
+            Function<SyntheticCreationalContext<RemoteCache<?, ?>>, RemoteCache<?, ?>> func,
+            Optional<RemoteCacheInterceptorBuildItem> interceptorBuildItem) {
+
         SyntheticBeanBuildItem.ExtendedBeanConfigurator configurator = SyntheticBeanBuildItem.configure(RemoteCache.class)
                 .types(remoteCacheBean.type)
                 .scope(ApplicationScoped.class)
-                .supplier(supplier)
+                .createWith(func)
                 .unremovable()
                 .setRuntimeInit();
+
+        interceptorBuildItem.ifPresent(bi -> {
+            List<Type> arguments = remoteCacheBean.type.asParameterizedType().arguments();
+            ParameterizedType.Builder providerTypeBuilder = ParameterizedType.builder(bi.getProviderTypeName());
+            arguments.stream().forEach(providerTypeBuilder::addArgument);
+            ParameterizedType providerType = providerTypeBuilder.build();
+            configurator.providerType(providerType);
+            configurator.injectInterceptionProxy(bi.getBindingsSourceName());
+        });
 
         configurator.addQualifier().annotation(INFINISPAN_REMOTE_ANNOTATION).addValue("value", remoteCacheBean.cacheName)
                 .done();

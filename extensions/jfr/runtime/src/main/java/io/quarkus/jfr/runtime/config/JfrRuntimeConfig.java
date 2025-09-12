@@ -37,4 +37,14 @@ public interface JfrRuntimeConfig {
     @WithName("runtime.enabled")
     @WithDefault("true")
     boolean runtimeEnabled();
+
+    /**
+     * If false, only Infinispan events in quarkus-jfr are not recorded even if JFR is enabled.
+     * In this case, other quarkus-jfr, Java standard API and virtual machine information will be recorded according to the
+     * setting.
+     * Default value is <code>true</code>
+     */
+    @WithName("infinispan.enabled")
+    @WithDefault("true")
+    boolean infinispanEnabled();
 }

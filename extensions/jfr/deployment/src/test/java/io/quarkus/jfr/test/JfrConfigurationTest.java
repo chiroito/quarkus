@@ -16,7 +16,8 @@ public class JfrConfigurationTest {
     static final QuarkusUnitTest TEST = new QuarkusUnitTest()
             .overrideConfigKey("quarkus.jfr.enabled", "false")
             .overrideConfigKey("quarkus.jfr.rest.enabled", "false")
-            .overrideConfigKey("quarkus.jfr.runtime.enabled", "false");
+            .overrideConfigKey("quarkus.jfr.runtime.enabled", "false")
+            .overrideConfigKey("quarkus.jfr.infinispan.enabled", "false");
 
     @Inject
     JfrRuntimeConfig runtimeConfig;
@@ -26,5 +27,6 @@ public class JfrConfigurationTest {
         assertFalse(runtimeConfig.enabled());
         assertFalse(runtimeConfig.restEnabled());
         assertFalse(runtimeConfig.runtimeEnabled());
+        assertFalse(runtimeConfig.infinispanEnabled());
     }
 }
