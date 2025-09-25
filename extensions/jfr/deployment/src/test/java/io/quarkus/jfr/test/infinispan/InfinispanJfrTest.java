@@ -24,7 +24,9 @@ import jdk.jfr.consumer.RecordingStream;
 public class InfinispanJfrTest {
 
     @RegisterExtension
-    static final QuarkusUnitTest TEST = new QuarkusUnitTest();
+    static final QuarkusUnitTest TEST = new QuarkusUnitTest()
+            .overrideConfigKey("quarkus.devservices.enabled", "true")
+            .overrideConfigKey("quarkus.infinispan-client.devservices.enabled", "true");
 
     @Remote(DEFAULT_CACHE_NAME)
     @Inject

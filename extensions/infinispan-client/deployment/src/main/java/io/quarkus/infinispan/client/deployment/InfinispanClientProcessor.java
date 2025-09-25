@@ -565,7 +565,11 @@ class InfinispanClientProcessor {
                     //                    ip.getType().asParameterizedType().arguments().stream().forEach(t -> builder.addArgument(t));
 
                     RemoteCacheBean remoteCacheBean = new RemoteCacheBean();
-                    remoteCacheBean.type = ip.getType().asParameterizedType();
+                    if (ip.getType().kind() == Type.Kind.PARAMETERIZED_TYPE) {
+                        remoteCacheBean.type = ip.getType().asParameterizedType();
+                    } else {
+                        remoteCacheBean.type = ip.getType();
+                    }
                     remoteCacheBean.cacheName = remoteCacheQualifier.value().asString();
                     remoteCacheBean.clientName = clientNameQualifier == null ? DEFAULT_INFINISPAN_CLIENT_NAME
                             : clientNameQualifier.value().asString();

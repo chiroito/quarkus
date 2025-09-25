@@ -16,6 +16,8 @@ public class JfrBuildConfigrationTest {
 
     @RegisterExtension
     static final QuarkusUnitTest TEST = new QuarkusUnitTest()
+            .overrideConfigKey("quarkus.devservices.enabled", "true")
+            .overrideConfigKey("quarkus.infinispan-client.devservices.enabled", "true")
             .overrideConfigKey("quarkus.jfr.build.infinispan.enabled", "false");
 
     @Inject

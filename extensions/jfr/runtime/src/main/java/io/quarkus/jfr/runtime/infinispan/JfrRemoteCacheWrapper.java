@@ -37,28 +37,28 @@ import org.reactivestreams.Publisher;
  *
  * <h2>Background</h2>
  * <ul>
- *   <li>The original {@code RemoteCache} implementation cannot be modified
- *       to add interceptor annotations, so this wrapper is introduced.</li>
- *   <li>Interceptor bindings are applied to each method, allowing cache
- *       operations to be recorded as Java Flight Recorder (JFR) events.</li>
- *   <li>Due to a limitation in Arc, {@code BindingsSource} only supports
- *       the "top-level interface."
- *       As a result, interceptors fire only for methods declared on
- *       {@code RemoteCache} itself, while methods declared in parent
- *       interfaces are not intercepted.</li>
- *   <li>All calls are transparently delegated to the underlying
- *       {@code RemoteCache} instance, without altering behavior.</li>
+ * <li>The original {@code RemoteCache} implementation cannot be modified
+ * to add interceptor annotations, so this wrapper is introduced.</li>
+ * <li>Interceptor bindings are applied to each method, allowing cache
+ * operations to be recorded as Java Flight Recorder (JFR) events.</li>
+ * <li>Due to a limitation in Arc, {@code BindingsSource} only supports
+ * the "top-level interface."
+ * As a result, interceptors fire only for methods declared on
+ * {@code RemoteCache} itself, while methods declared in parent
+ * interfaces are not intercepted.</li>
+ * <li>All calls are transparently delegated to the underlying
+ * {@code RemoteCache} instance, without altering behavior.</li>
  * </ul>
  *
  * <h2>Developer Notes</h2>
  * <ul>
- *   <li>Created at build time as a synthetic bean; not intended to be
- *       instantiated or referenced manually.</li>
- *   <li>This wrapper is strictly for JFR purposes and should not be
- *       repurposed for other instrumentation.</li>
- *   <li>If new methods are introduced upstream in {@code RemoteCache},
- *       they must be mirrored here with consistent delegation and
- *       annotations to maintain JFR coverage.</li>
+ * <li>Created at build time as a synthetic bean; not intended to be
+ * instantiated or referenced manually.</li>
+ * <li>This wrapper is strictly for JFR purposes and should not be
+ * repurposed for other instrumentation.</li>
+ * <li>If new methods are introduced upstream in {@code RemoteCache},
+ * they must be mirrored here with consistent delegation and
+ * annotations to maintain JFR coverage.</li>
  * </ul>
  *
  * <h2>Scope</h2>
